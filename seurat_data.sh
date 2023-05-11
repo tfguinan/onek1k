@@ -1,5 +1,5 @@
 #PBS -N seurat_data
-#PBS -M tfguinan@utas.edu.au
+#PBS -M thomas.guinan@utas.edu.au
 #PBS -m abe
 #PBS -l select=1:ncpus=28:mem=256gb
 #PBS -l walltime=168:00:00
