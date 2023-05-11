@@ -5,6 +5,8 @@ library(SeuratDisk)
 library(hdf5r)
 library(sctransform)
 library(ggplot2)
+library(pandoc)
+library(plotly)
 # Seems dataset is too large for parallelising (duplicate object in memory?)
 # library(future)
 
@@ -116,6 +118,8 @@ features.average <- Seurat::AverageExpression(object = onek1k_main, slot = 'coun
 SeuratDisk::SaveH5Seurat(features.average, filename = path(out.path, sprintf('%s_features-average.h5seurat', data.name)))
 
 
+features.average <- Connect("/data/menzies_projects/onek1k/share/TG/git_analysis/output_data/seurat/onek1k_features-average.h5seurat")
+features.average <- LoadH5Seurat(features.average)
 q()
 
 ########## All above is temporary ##########
@@ -198,3 +202,234 @@ dev.off()
 ## Matrix (TODO assess)
 
 ## 1v1 Violins
+
+## 1xall volcano plot
+# LogFC by P
+# load markers from RDS
+
+# Load markers alongside log gene sums
+
+logsums <- readRDS("/data/menzies_projects/onek1k/share/TG/git_analysis/output_data/seurat/onek1k_gene_log-sums.RDS")
+old.dir <- getwd()
+setwd('/data/menzies_projects/onek1k/share/TG/git_analysis/output_data/seurat/1xall/')
+files.list <- list.files(pattern = '\\.RDS$')
+
+# Must add logsums at this stage
+markers.list <- list()
+for (file in files.list){
+    file.markers <- readRDS(file)
+    file.markers$gene <- rownames(file.markers)
+    file.markers$log_sum <- logsums[file.markers$gene] 
+    markers.list[[gsub('.RDS','',file)]] <- file.markers
+}
+
+# Markers will now have logsum and gene columns (not just rownames)
+markers <- do.call(rbind, markers.list)
+# rm(file.markers)
+# rm(markers.list)
+setwd(old.dir)
+
+
+# average.matrix <- GetAssayData(features.average, slot = 'scale.data')
+average.matrix <- GetAssayData(features.average, slot = 'counts')
+colnames(average.matrix) <- gsub(' ', '_', colnames(average.matrix))
+markers.list <- list()
+old.dir <- getwd()
+setwd('/data/menzies_projects/onek1k/share/TG/git_analysis/output_data/seurat/1xall/')
+files.list <- list.files(pattern = '\\.RDS$')
+for (file in files.list){
+    type <- strsplit(file, '-')[[1]][1]
+    message(type)
+    file.markers <- readRDS(file)
+    file.markers$gene <- rownames(file.markers)
+    file.markers$avg <- average.matrix[file.markers$gene, type]
+    markers.list[[gsub('.RDS','', file)]] <- file.markers
+} 
+markers <- do.call(rbind, markers.list)
+
+
+volcano_1 <- ggplot(data=markers, aes(x=avg_log2FC, y=-log10(p_val), col=log_sum)) +
+    geom_point()
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/test_volcano1_log.pdf', width=34/2.54, height=20/2.54)                                                                                                                 
+volcano_1
+dev.off()
+
+volcano_2 <- ggplot(data=markers, aes(x=avg_log2FC, y=-log10(p_val_adj), col=log_sum)) +
+    geom_point()
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/test_volcano2_log.pdf', width=34/2.54, height=20/2.54)                                                                                                                 
+volcano_2
+dev.off()
+
+
+
+## Do all 1x1 markers
+# CD4 vs CD4
+
+x1.markers <- readRDS('/data/menzies_projects/onek1k/share/TG/git_analysis/output_data/seurat/1x1/CD4_Naive-v-CD4_CTL-1x1-lr.RDS')
+
+volcano_3 <- ggplot(data=x1.markers, aes(x=avg_log2FC, y=-log10(p_val))) +
+    geom_point()
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/test_volcano3_log.pdf', width=34/2.54, height=20/2.54)                                                                                                                 
+volcano_3
+dev.off()
+
+volcano_4 <- ggplot(data=x1.markers, aes(x=avg_log2FC, y=-log10(p_val_adj))) +
+    geom_point()
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/test_volcano4_log.pdf', width=34/2.54, height=20/2.54)                                                                                                                 
+volcano_3
+dev.off()
+
+
+## MA plot
+# log2FC x average_expression
+# See https://github.com/satijalab/seurat/issues/4167
+
+features.average
+
+
+
+
+ma_plot_1 <- ggplot(data = markers, aes(x=log_sum, y=avg_log2FC, col=p_val_adj)) + 
+    geom_point(position = 'jitter')
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/test_ma_plot_1_jitter.pdf', width=34/2.54, height=20/2.54)                                                                                                                 
+ma_plot_1
+dev.off()
+
+
+ma_plot_2 <- ggplot(data = markers, aes(x=avg, y=avg_log2FC, col=p_val_adj)) + 
+    geom_point(position = 'jitter')
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/test_ma_plot_2.pdf', width=34/2.54, height=20/2.54)                                                                                                                 
+ma_plot_2
+dev.off()
+
+ma_plot_3 <- ggplot(data = markers, aes(x=avg, y=avg_log2FC, col=p_val_adj < 0.5)) + 
+    geom_point() #+
+    # scale_color_gradient(low = 'gray', high = 'red', breaks = c(FALSE, TRUE),
+    #                    labels = c('p_val_adj >= 0.1', 'p_val_adj < 0.1'))
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/test_ma_plot_2.pdf', width=68/2.54, height=40/2.54)                                                                                                                 
+ma_plot_3
+dev.off()
+
+################
+
+features.average <- Connect("/data/menzies_projects/onek1k/share/TG/git_analysis/output_data/seurat/onek1k_features-average.h5seurat")
+features.average <- LoadH5Seurat(features.average)
+
+average.matrix <- GetAssayData(features.average, slot = 'counts')
+scale.average.matrix <- GetAssayData(features.average, slot = 'scale.data')
+log.average.matrix <- GetAssayData(features.average, slot = 'data')
+
+
+matrix.list <- list(average.matrix, log.average.matrix, scale.average.matrix)
+names(matrix.list) <- c('average', 'log.average', 'scale.average')
+matrix.list <- lapply(matrix.list, function(x){colnames(x) <- gsub(' ', '_', colnames(x)); return (x)})
+
+markers.list <- list()
+old.dir <- getwd()
+setwd('/data/menzies_projects/onek1k/share/TG/git_analysis/output_data/seurat/1xall/')
+files.list <- list.files(pattern = '\\.RDS$')
+for (file in files.list){
+    type <- strsplit(file, '-')[[1]][1]
+    message(type)
+    file.markers <- readRDS(file)
+    file.markers$gene <- rownames(file.markers)
+    for (name in names(matrix.list)){
+        file.markers[name] <- matrix.list[[name]][file.markers$gene, type]
+    }
+    file.markers$mean.average <- mean.average.matrix
+    markers.list[[gsub('.RDS','', file)]] <- file.markers
+} 
+rm(name)
+markers <- do.call(rbind, markers.list)
+
+mean.average.matrix <- rowMeans(average.matrix)
+
+# markers$gene <- sapply(strsplit(rownames(markers), '\\.'), '[', 2)
+markers$type <- sapply(strsplit(rownames(markers), '\\-'), '[', 1)
+
+markers.p_adj.filtered <- subset(markers, p_val < 0.5)
+
+# TODO add mean average (by gene)
+
+
+# pct.1 - Percentage of cells where gene is detected in first group
+# pct.2 - Percentage of cells where gene is detected in all others
+
+plotly.p_adj.filtered <- plot_ly(data=markers.p_adj.filtered,
+    x=~average, y=~avg_log2FC, 
+    text=~paste('</br> gene: ', gene,
+        '</br> type: ', type,
+        '</br> p_val: ', p_val,
+        '</br> p_val_adj: ', p_val_adj,
+        '</br> %gene_cell_type: ', pct.1,
+        '</br> %gene_all: ', pct.2))
+
+# Unable to have selfcontained TRUE due to pandoc issues
+htmlwidgets::saveWidget(
+    widget = plotly.p_adj.filtered,
+    file = "/data/menzies_projects/onek1k/share/TG/git_analysis/ma-p_avg-filtered.html",
+    selfcontained=FALSE)
+
+
+plotly.log.average <- plot_ly(data=markers, x=~log.average, y=~avg_log2FC, text=~name)
+
+# Unable to have selfcontained TRUE due to pandoc issues
+htmlwidgets::saveWidget(
+    widget = plotly.log.average,
+    file = "/data/menzies_projects/onek1k/share/TG/git_analysis/ma_log_average.html",
+    selfcontained=FALSE)
+
+
+plotly.scale.average <- plot_ly(data=markers, x=~scale.average, y=~avg_log2FC, text=~name)
+
+# Unable to have selfcontained TRUE due to pandoc issues
+htmlwidgets::saveWidget(
+    widget = plotly.scale.average,
+    file = "/data/menzies_projects/onek1k/share/TG/git_analysis/ma_scale_average.html",
+    selfcontained=FALSE)
+
+ma_plot <- ggplot(data = markers, aes(x=average, y=avg_log2FC, col=p_val_adj)) + 
+    geom_point() +
+    theme(plot.title = element_text(size = 25, face = "bold"),
+        axis.title = element_text(size = 20),
+        axis.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 20))
+
+saveWidget(ggplotly(ma_plot), file = "/data/menzies_projects/onek1k/share/TG/git_analysis/ma_plot.html")
+
+log_ma_plot <- ggplot(data = markers, aes(x=log.average, y=avg_log2FC, col=p_val_adj)) + 
+    geom_point() +
+    theme(plot.title = element_text(size = 25, face = "bold"),
+        axis.title = element_text(size = 20),
+        axis.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 20))
+
+scaled_ma_plot <- ggplot(data = markers, aes(x=scale.average, y=avg_log2FC, col=p_val_adj)) + 
+    geom_point() +
+    theme(plot.title = element_text(size = 25, face = "bold"),
+        axis.title = element_text(size = 20),
+        axis.text = element_text(size = 20),
+        legend.title = element_text(size = 20),
+        legend.text = element_text(size = 20))
+
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/ma_plot.pdf', width=68/2.54, height=40/2.54)     
+ma_plot
+dev.off()
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/ma_plot_log.pdf', width=68/2.54, height=40/2.54)
+log_ma_plot
+dev.off()
+    
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/ma_plot_scaled.pdf', width=68/2.54, height=40/2.54)
+scaled_ma_plot
+dev.off()
