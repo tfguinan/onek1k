@@ -27,7 +27,6 @@ full_auc_mtx = full_auc_mtx.fillna(0)
 cell_type_index.columns = ['predicted.celltype.l2']
 print(cell_type_index)
 
-# HUGE! ~ 14GB
 # print('Writing to csv')
 # full_auc_mtx.to_csv('/data/menzies_projects/onek1k/share/TG/git_analysis/full_auc_mtx.csv')
 
