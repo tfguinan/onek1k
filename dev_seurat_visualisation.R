@@ -1,4 +1,6 @@
-########### This block stolen from _data for temporary testing ##########
+q()
+# Not yet to be run
+#################### This block stolen from _data for temporary testing ##########
 
 library(Seurat)
 library(SeuratDisk)
@@ -6,7 +8,6 @@ library(hdf5r)
 library(sctransform)
 library(ggplot2)
 library(pandoc)
-library(plotly)
 # Seems dataset is too large for parallelising (duplicate object in memory?)
 # library(future)
 
@@ -127,6 +128,7 @@ q()
 library(Seurat)
 library(SeuratDisk)
 library(ComplexHeatmap)
+library(plotly)
 
 # TODO
 # TODO sanitise all cell type names, remove spaces
@@ -403,7 +405,6 @@ ma_plot <- ggplot(data = markers, aes(x=average, y=avg_log2FC, col=p_val_adj)) +
         legend.title = element_text(size = 20),
         legend.text = element_text(size = 20))
 
-saveWidget(ggplotly(ma_plot), file = "/data/menzies_projects/onek1k/share/TG/git_analysis/ma_plot.html")
 
 log_ma_plot <- ggplot(data = markers, aes(x=log.average, y=avg_log2FC, col=p_val_adj)) + 
     geom_point() +
@@ -433,3 +434,41 @@ dev.off()
 pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/ma_plot_scaled.pdf', width=68/2.54, height=40/2.54)
 scaled_ma_plot
 dev.off()
+
+
+library(ComplexHeatmap)
+
+
+cell_type_regulon <- read.csv('/data/menzies_projects/onek1k/share/TG/git_analysis/cell_type_rss.csv')
+
+pdf('/data/menzies_projects/onek1k/share/TG/git_analysis/cell_type-onek1k-heatmap.pdf', width=41.5/2.54, height=68.5/2.54)                                                                                                                 
+Heatmap(cell_type_regulon,
+    row_names_gp = grid::gpar(fontsize = 2), column_names_gp = grid::gpar(fontsize = 15))
+dev.off()
+
+
+# Load necessary libraries
+library(ggplot2)
+library(reshape2)
+
+# Read in CSV file
+df <- read.csv('/data/menzies_projects/onek1k/share/TG/git_analysis/cell_type_rss.csv', header=TRUE, row.names=1)
+
+
+
+
+library(tidyverse)
+
+dt2 <- df %>%
+  rownames_to_column() %>%
+  gather(colname, value, -rowname)
+head(dt2)
+
+
+# Create heatmap
+ggplot(dt2, aes(x=rowname, y=colname, fill=value)) + 
+  geom_tile() + 
+  scale_fill_gradient(low="white", high="red")
+
+# Save plot as PDF
+ggsave('/data/menzies_projects/onek1k/share/TG/git_analysis/cell_type-onek1k-heatmap.pdf')
