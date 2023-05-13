@@ -11,9 +11,6 @@ loom_list = glob(f'{in_path}*-scenic-output.loom')
 full_auc_mtx = pd.DataFrame()
 cell_type_index = pd.DataFrame()
 
-# We should ignore index
-# , ignore_index=True, sort=False
-
 for loom in loom_list:
     print('Accessing:', loom)
     lf = lp.connect(loom, mode='r+', validate=False)
